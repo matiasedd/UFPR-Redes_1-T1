@@ -34,7 +34,13 @@ int main() {
             kermit_package_t *msg = (kermit_package_t *)buffer;
             // Calcula o CRC e verifica
 
-            printf("RECEIVED\n%s\n", msg->data);
+            FILE *file = fopen("received_data.bin", "ab");
+            if (file != NULL) {
+                fwrite(msg->data, sizeof(uint8_t), msg->size, file);
+                fclose(file);
+            } else {
+                perror("Erro ao abrir arquivo para gravação");
+            }
         }
     }
 
