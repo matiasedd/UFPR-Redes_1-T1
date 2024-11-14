@@ -23,6 +23,7 @@ int main() {
     }
 
     char buffer[MAX_BUF_SIZE];
+    uint8_t seq_ctl = 0;
 
     printf("Listening...\n");
     while (1) {
@@ -34,12 +35,12 @@ int main() {
             kermit_package_t *msg = (kermit_package_t *)buffer;
             // Calcula o CRC e verifica
 
-            FILE *file = fopen("received_data.bin", "ab");
-            if (file != NULL) {
+            FILE *file = fopen("received_data.bin", "a");
+            if ((file != NULL) && (msg->seq == seq_ctl)) {
                 fwrite(msg->data, sizeof(uint8_t), msg->size, file);
                 fclose(file);
-            } else {
-                perror("Erro ao abrir arquivo para gravação");
+                
+                ++seq_ctl;
             }
         }
     }

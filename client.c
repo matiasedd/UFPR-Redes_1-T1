@@ -51,17 +51,11 @@ int main() {
     server.sll_protocol = htons(ETH_P_ALL);
     server.sll_ifindex = if_nametoindex("lo");
 
-    // kermit_package_t msg;
-    // msg.mark = 0x7E;
-    // msg.size = 10;
-    // msg.seq = 0;
-    // msg.type = 0x10;
-    // strcpy((char *)msg.data, "Backup de arquivo");
+    char *command = "backup";
+    char *filename = "Makefile";
 
-    // send_package(sockfd, &server, &msg);
-    // printf("Mensagem enviada!\n");
-
-    backup(sockfd, &server, "Makefile");
+    if (strcmp(command, "backup") == 0)
+        backup(sockfd, &server, filename);
 
     close(sockfd);
 
