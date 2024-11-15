@@ -16,9 +16,12 @@
 typedef struct 
 {
     uint8_t mark;
-    uint8_t size;
-    uint8_t seq;
-    uint8_t type;
+    uint16_t field;
     uint8_t data[MAX_DATA_SIZE];
     uint8_t crc;
 } kermit_package_t;
+
+/* --- Client --- */
+
+void backup(int sockfd, struct sockaddr_ll *servidor, const char *nome_arquivo);
+
