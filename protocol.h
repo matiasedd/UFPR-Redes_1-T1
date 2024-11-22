@@ -12,6 +12,8 @@
 #include <net/if.h>
 
 #define MAX_DATA_SIZE 63
+#define INPUT_BUFFER_SIZE 1024
+#define DEVICE "enp0s31f6"
 
 typedef struct 
 {
@@ -23,5 +25,11 @@ typedef struct
 
 /* --- Client --- */
 
-void backup(int sockfd, struct sockaddr_ll *servidor, const char *nome_arquivo);
+void client_backup(int sockfd, struct sockaddr_ll *server_addr, const char *pathname);
+
+void restaura();
+
+void verifica();
+
+/* --- Server --- */
 

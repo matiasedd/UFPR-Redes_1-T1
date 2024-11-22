@@ -4,6 +4,9 @@
 
 int main() {
     /* --- Handle Socket --- */
+
+    puts("Iniciando Socket");
+
     int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 
     if (sockfd < 0) {
@@ -11,41 +14,32 @@ int main() {
         return 1;
     }
 
-    struct sockaddr_ll server;
-    memset(&server, 0, sizeof(server));
-    
-    server.sll_family = AF_PACKET;
-    server.sll_protocol = htons(ETH_P_ALL);
-    server.sll_ifindex = if_nametoindex("lo");
+    struct sockaddr_ll client_addr;
 
-    if (bind(sockfd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("Erro ao bindar o socket");
-        return 1;
+    memset(&client_addr, 0, sizeof (client_addr));
+    client_addr.sll_family = AF_PACKET;
+    client_addr.sll_protocol = htons(ETH_P_ALL);
+    client_addr.sll_ifindex = if_nametoindex(DEVICE);
+
+    if (bind(sockfd, (struct sockaddr *) &client_addr, sizeof (client_addr)) < 0) {
+        perror("Erro no bind");
+        return -2;
     }
 
-    /* --- Handle msg --- */
+    puts("Socket Iniciado com Sucesso");
 
-    struct sockaddr_ll client;
-    socklen_t len = sizeof(client);
+    /* --- Handle Pkg --- */
 
-    kermit_package_t msg;
+    kermit_package_t pkg;
     uint8_t seq_ctl = 0;
 
-    printf("Listening...\n");
-    while (1) {
-        int n = recvfrom(sockfd, &msg, sizeof(msg), 0, (struct sockaddr *) &client, &len);
+    printf("Escutando...\n");
 
-        if (n > 0) {
-            FILE *file = fopen("received_data.bin", "a");
-            /*
-            if ((file != NULL) && (msg->seq == seq_ctl)) {
-                fwrite(msg->data, sizeof(uint8_t), msg->size, file);
-                fclose(file);
-                
-                ++seq_ctl;
-            }
-            */
-        }
+    for (;;) {
+        puts("recv");
+        recv(sockfd, &pkg, sizeof (pkg), 0);
+
+        ++seq_ctl;
     }
 
     close(sockfd);
