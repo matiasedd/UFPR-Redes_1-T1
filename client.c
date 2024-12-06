@@ -16,19 +16,31 @@ void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, ui
 
 int main()
 {
-    const char *interface = "lo";
+    const char *interface = "enp0s31f6";
     int sockfd = create_raw_socket((char *)interface);
-
-    kermit_t pacote;
-    const char *mensagem = "Hello World";
-
-    montar_pacote(&pacote, mensagem, 1, 0b00100);
 
     struct sockaddr_ll destino = {0};
     destino.sll_family = AF_PACKET;
     destino.sll_ifindex = if_nametoindex(interface);
     destino.sll_halen = ETH_ALEN;
     memset(destino.sll_addr, 0xFF, ETH_ALEN); // Broadcast MAC address
+
+    char nome_arq[64];
+
+    fgets(nome_arq, 64, stdin);
+    nome_arq[strlen(nome_arq)-1] = '\0';
+    
+    /* BACKUP */
+    kermit_t pacote;
+
+    FILE *arquivo = fopen(nome_arq, "r");
+
+    if (arquivo == NULL) {
+        perror("Erro ao abrir arquivo");
+        return -1;
+    }
+
+    montar_pacote(&pacote, nome_arq, 1, 0b00100);
 
     // Envio do pacote
     ssize_t bytes_enviados = sendto(sockfd, &pacote, sizeof(kermit_t), 0,
@@ -39,6 +51,8 @@ int main()
     }
 
     printf("Pacote enviado com sucesso (%ld bytes)\n", bytes_enviados);
+
+    fclose(arquivo);
 
     return 0;
 }
