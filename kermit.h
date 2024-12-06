@@ -6,11 +6,28 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct kermit_package {
-    uint8_t inicio;
-    uint16_t info;         // tamanho, sequencia, tipo
-    uint8_t dados[64];
-    uint8_t crc;
+typedef struct kermit_package
+{
+	uint8_t inicio;
+	uint16_t info; // tamanho, sequencia, tipo
+	uint8_t dados[64];
+	uint8_t crc;
 } kermit_t;
 
-int create_raw_socket(char* interface);
+#define INICIO 0b01111110
+#define OFFSET_5 0b00011111
+#define OFFSET_6 0b00111111
+
+#define ACK 0b00000
+#define NACK 0b00001
+#define OK 0b00010
+
+#define BACKUP 0b00100
+#define RESTAURA 0b00101
+#define VERIFICA 0b00110
+
+#define DADOS 0b10000
+#define FINALIZA 0b10001
+#define ERRO 0b11111
+
+int create_raw_socket(char *interface);

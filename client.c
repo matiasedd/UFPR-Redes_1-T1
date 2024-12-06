@@ -4,12 +4,12 @@ void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, ui
 {
     memset(pacote, 0, sizeof(kermit_t));
 
-    pacote->inicio = 0b01111110;
+    pacote->inicio = INICIO;
     uint8_t tamanho = strlen(mensagem);
     if (tamanho > 64)
         tamanho = 64;
 
-    pacote->info = (tamanho & 0b00111111) | ((sequencia & 0b00011111) << 6) | ((tipo & 0b00011111) << 11);
+    pacote->info = (tamanho & OFFSET_6) | ((sequencia & OFFSET_5) << 6) | ((tipo & OFFSET_5) << 11);
 
     memcpy(pacote->dados, mensagem, tamanho);
 
@@ -19,13 +19,12 @@ void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, ui
 void processar_pacote(kermit_t *pacote)
 {
     // Desmonta o campo info
-    uint8_t tamanho = pacote->info & 0b00111111;          // Bits 0-5
-    uint8_t sequencia = (pacote->info >> 6) & 0b00011111; // Bits 6-10
-    uint8_t tipo = (pacote->info >> 11) & 0b00011111;     // Bits 11-15
-
+    uint8_t tamanho = pacote->info & OFFSET_6;          // Bits 0-5
+    uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
+    uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
 
     switch(tipo) {
-        case 0b00000:
+        case OK:
             puts("Received OK from server");
             break;
         default:
@@ -40,14 +39,13 @@ void processar_pacote(kermit_t *pacote)
 
 int main()
 {
-    const char *interface = "enp0s31f6";
+    const char *interface = "lo";
     int sockfd = create_raw_socket((char *)interface);
 
     struct sockaddr_ll destino = {0};
     destino.sll_family = AF_PACKET;
     destino.sll_ifindex = if_nametoindex(interface);
-    destino.sll_halen = ETH_ALEN;
-    memset(destino.sll_addr, 0xFF, ETH_ALEN); // Broadcast MAC address
+    destino.sll_protocol = htons(ETH_P_ALL);
 
     char nome_arq[64];
 
@@ -65,7 +63,7 @@ int main()
         return -1;
     }
 
-    montar_pacote(&pacote, nome_arq, 1, 0b00100);
+    montar_pacote(&pacote, nome_arq, 1, BACKUP);
 
     // Envio do pacote
     ssize_t bytes_enviados = sendto(sockfd, &pacote, sizeof(kermit_t), 0,
@@ -98,7 +96,7 @@ int main()
 
     // Processa o pacote
     kermit_t *pkg = (kermit_t *)buffer;
-    if (pkg->inicio == 0b01111110)
+    if (pkg->inicio == INICIO)
     { // Verifica campo de início
         processar_pacote(pkg);
     }

@@ -1,13 +1,15 @@
 #include "kermit.h"
 
-void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, uint8_t tipo) {
+void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, uint8_t tipo)
+{
     memset(pacote, 0, sizeof(kermit_t));
 
-    pacote->inicio = 0b01111110;
+    pacote->inicio = INICIO;
     uint8_t tamanho = strlen(mensagem);
-    if (tamanho > 64) tamanho = 64;
+    if (tamanho > 64)
+        tamanho = 64;
 
-    pacote->info = (tamanho & 0b00111111) | ((sequencia & 0b00011111) << 6) | ((tipo & 0b00011111) << 11);
+    pacote->info = (tamanho & OFFSET_6) | ((sequencia & OFFSET_5) << 6) | ((tipo & OFFSET_5) << 11);
 
     memcpy(pacote->dados, mensagem, tamanho);
 
@@ -17,9 +19,9 @@ void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, ui
 void imprime_pacote(kermit_t *pacote)
 {
     // Desmonta o campo info
-    uint8_t tamanho = pacote->info & 0b00111111;          // Bits 0-5
-    uint8_t sequencia = (pacote->info >> 6) & 0b00011111; // Bits 6-10
-    uint8_t tipo = (pacote->info >> 11) & 0b00011111;     // Bits 11-15
+    uint8_t tamanho = pacote->info & OFFSET_6;          // Bits 0-5
+    uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
+    uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
 
     // Exibe informações do pacote
     printf("\tInicio: 0b%08b\n", pacote->inicio);
@@ -42,12 +44,13 @@ int server_backup(kermit_t *recebido, int sockfd, struct sockaddr_ll destino)
 
     char nome_arq[64];
     kermit_t enviado;
-    montar_pacote(&enviado, nome_arq, 1, 0b00000);
-    
+    montar_pacote(&enviado, nome_arq, 1, OK);
+
     // Envio do pacote
     ssize_t bytes_enviados = sendto(sockfd, &enviado, sizeof(kermit_t), 0,
-                                    (struct sockaddr*)&destino, sizeof(destino));
-    if (bytes_enviados == -1) {
+                                    (struct sockaddr *)&destino, sizeof(destino));
+    if (bytes_enviados == -1)
+    {
         perror("Erro ao enviar pacote");
         return -1;
     }
@@ -59,13 +62,13 @@ int server_backup(kermit_t *recebido, int sockfd, struct sockaddr_ll destino)
 
 int main()
 {
-    const char *interface = "enp0s31f6"; // Interface para escutar
+    const char *interface = "lo";
     int sockfd = create_raw_socket((char *)interface);
 
     struct sockaddr_ll destino = {0};
     destino.sll_family = AF_PACKET;
     destino.sll_ifindex = if_nametoindex(interface);
-    destino.sll_protocol = ETH_P_ALL;
+    destino.sll_protocol = htons(ETH_P_ALL);
 
     puts("Servidor inicializado: aguardando o envio de pacotes");
 
@@ -93,22 +96,22 @@ int main()
 
         // Processa o pacote
         kermit_t *pacote = (kermit_t *)buffer;
-        if (pacote->inicio == 0b01111110)
+        if (pacote->inicio == INICIO)
         { // Verifica campo de início
             imprime_pacote(pacote);
 
-            uint8_t tipo = (pacote->info >> 11) & 0b00011111;     // Bits 11-15
+            uint8_t tipo = (pacote->info >> 11) & OFFSET_5; // Bits 11-15
 
             // Ações baseadas no tipo
             switch (tipo)
             {
-            case 0b00100: // backup
+            case BACKUP: // backup
                 server_backup(pacote, sockfd, destino);
                 break;
-            case 0b10000: // Dados
+            case DADOS: // Dados
                 printf("Recebendo dados para backup...\n");
                 break;
-            case 0b10001: // Fim da transmissão
+            case FINALIZA: // Fim da transmissão
                 printf("Transmissão de dados finalizada.\n");
                 break;
             default:
