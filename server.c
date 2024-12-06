@@ -1,6 +1,19 @@
 #include "kermit.h"
 
-void processar_pacote(const kermit_t *pacote) {
+int server_backup(kermit_t *pacote) {
+    printf("Solicitação de backup recebida. Processando...\n");
+
+    FILE *arquivo = fopen((char *) pacote->dados, "w");
+
+    if (arquivo == NULL) {
+        perror("Erro ao salvar arquivo");
+        return -1;
+    }
+
+    return 0;
+}
+
+void processar_pacote(kermit_t *pacote) {
     // Desmonta o campo info
     uint8_t tamanho = pacote->info & 0b00111111; // Bits 0-5
     uint8_t sequencia = (pacote->info >> 6) & 0b00011111; // Bits 6-10
@@ -16,7 +29,7 @@ void processar_pacote(const kermit_t *pacote) {
     // Ações baseadas no tipo
     switch (tipo) {
         case 0b00100: // backup
-            printf("Solicitação de backup recebida. Processando...\n");
+            server_backup(pacote);
             break;
         case 0b10000: // Dados
             printf("Recebendo dados para backup...\n");
@@ -31,8 +44,10 @@ void processar_pacote(const kermit_t *pacote) {
 
 int main()
 {
-    const char *interface = "lo"; // Interface para escutar
+    const char *interface = "enp0s31f6"; // Interface para escutar
     int sockfd = create_raw_socket((char *)interface);
+
+    puts("Servidor inicializado: aguardando o envio de pacotes");
 
     while (1)
     {
