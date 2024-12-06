@@ -1,50 +1,72 @@
-#include "protocol.h"
+#include "kermit.h"
 
-#define MAX_BUF_SIZE 1024
+void processar_pacote(const kermit_t *pacote) {
+    // Desmonta o campo info
+    uint8_t tamanho = pacote->info & 0b00111111; // Bits 0-5
+    uint8_t sequencia = (pacote->info >> 6) & 0b00011111; // Bits 6-10
+    uint8_t tipo = (pacote->info >> 11) & 0b00011111; // Bits 11-15
 
-int main() {
-    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    // Exibe informações do pacote
+    printf("Pacote recebido:\n");
+    printf("Inicio: 0b%08b\n", pacote->inicio);
+    printf("Info: Tamanho=%d, Sequência=%d, Tipo=0b%05b\n", tamanho, sequencia, tipo);
+    printf("Dados: %.*s\n", tamanho, pacote->dados);
+    printf("CRC: 0b%08b\n", pacote->crc);
 
-    if (sockfd < 0) {
-        perror("Erro ao criar socket");
-        return 1;
+    // Ações baseadas no tipo
+    switch (tipo) {
+        case 0b00100: // backup
+            printf("Solicitação de backup recebida. Processando...\n");
+            break;
+        case 0b10000: // Dados
+            printf("Recebendo dados para backup...\n");
+            break;
+        case 0b10001: // Fim da transmissão
+            printf("Transmissão de dados finalizada.\n");
+            break;
+        default:
+            printf("Tipo de pacote não reconhecido: 0b%05b\n", tipo);
     }
+}
 
-    struct sockaddr_ll server;
-    memset(&server, 0, sizeof(server));
-    
-    server.sll_family = AF_PACKET;
-    server.sll_protocol = htons(ETH_P_ALL);
-    server.sll_ifindex = if_nametoindex("lo");
+int main()
+{
+    const char *interface = "lo"; // Interface para escutar
+    int sockfd = create_raw_socket((char *)interface);
 
-    if (bind(sockfd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("Erro ao bindar o socket");
-        return 1;
-    }
+    while (1)
+    {
+        char buffer[2048];
+        struct sockaddr_ll remetente;
+        socklen_t remetente_len = sizeof(remetente);
 
-    char buffer[MAX_BUF_SIZE];
-    uint8_t seq_ctl = 0;
+        // Recebe o pacote
+        ssize_t bytes_recebidos = recvfrom(sockfd, buffer, sizeof(buffer), 0,
+                                           (struct sockaddr *)&remetente, &remetente_len);
+        if (bytes_recebidos == -1)
+        {
+            perror("Erro ao receber pacote");
+            continue;
+        }
 
-    printf("Listening...\n");
-    while (1) {
-        struct sockaddr_ll client;
-        socklen_t len = sizeof(client);
-        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client, &len);
+        // Valida se o pacote é do tipo kermit_t
+        if (bytes_recebidos < sizeof(kermit_t))
+        {
+            printf("Pacote ignorado (tamanho insuficiente: %ld bytes)\n", bytes_recebidos);
+            continue;
+        }
 
-        if (n > 0) {
-            kermit_package_t *msg = (kermit_package_t *)buffer;
-            // Calcula o CRC e verifica
-
-            FILE *file = fopen("received_data.bin", "a");
-            if ((file != NULL) && (msg->seq == seq_ctl)) {
-                fwrite(msg->data, sizeof(uint8_t), msg->size, file);
-                fclose(file);
-                
-                ++seq_ctl;
-            }
+        // Processa o pacote
+        kermit_t *pacote = (kermit_t *)buffer;
+        if (pacote->inicio == 0b01111110)
+        { // Verifica campo de início
+            processar_pacote(pacote);
+        }
+        else
+        {
+            printf("Pacote ignorado (campo de início inválido: 0b%08b)\n", pacote->inicio);
         }
     }
 
-    close(sockfd);
     return 0;
 }

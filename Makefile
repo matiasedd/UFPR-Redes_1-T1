@@ -1,13 +1,19 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wno-parentheses
+CFLAGS = -std=c99 -Wall 
 
-all: client.o server.o
+all: client server
 
-client.o: client.c
-	$(CC) $(CFLAGS) client.c -o client
+client: kermit
+	$(CC) $(CFLAGS) client.c kermit.o -o client
 
-server.o: server.c
-	$(CC) $(CFLAGS) server.c -o server
+server: kermit
+	$(CC) $(CFLAGS) server.c kermit.o -o server 
+
+kermit:
+	$(CC) $(CFLAGS) -c kermit.c
 
 clean:
+	rm -f kermit.o
+
+purge: clean
 	rm -f client server

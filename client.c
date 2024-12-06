@@ -1,63 +1,44 @@
-#include "protocol.h"
+#include "kermit.h"
 
-void send_package(int sockfd, struct sockaddr_ll *server, kermit_package_t *msg) {
-    // Calcula o CRC
+void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, uint8_t tipo) {
+    memset(pacote, 0, sizeof(kermit_t));
 
-    if (sendto(sockfd, msg, sizeof(kermit_package_t), 0, (struct sockaddr *)server, sizeof(*server)) < 0) {
+    pacote->inicio = 0b01111110;
+    uint8_t tamanho = strlen(mensagem);
+    if (tamanho > 64) tamanho = 64;
+
+    pacote->info = (tamanho & 0b00111111) | ((sequencia & 0b00011111) << 6) | ((tipo & 0b00011111) << 11);
+
+    memcpy(pacote->dados, mensagem, tamanho);
+
+    pacote->crc = 0x0;
+}
+
+int main()
+{
+    const char *interface = "lo";
+    int sockfd = create_raw_socket((char *)interface);
+
+    kermit_t pacote;
+    const char *mensagem = "Hello World";
+
+    montar_pacote(&pacote, mensagem, 1, 0b00100);
+
+    struct sockaddr_ll destino = {0};
+    destino.sll_family = AF_PACKET;
+    destino.sll_ifindex = if_nametoindex(interface);
+    destino.sll_halen = ETH_ALEN;
+    memset(destino.sll_addr, 0xFF, ETH_ALEN); // Broadcast MAC address
+
+    // Envio do pacote
+    ssize_t bytes_enviados = sendto(sockfd, &pacote, sizeof(kermit_t), 0,
+                                    (struct sockaddr*)&destino, sizeof(destino));
+    if (bytes_enviados == -1) {
         perror("Erro ao enviar pacote");
-    }
-}
-
-void backup(int sockfd, struct sockaddr_ll *servidor, const char *nome_arquivo) {
-    FILE *arquivo = fopen(nome_arquivo, "r");
-    
-    if (!arquivo) {
-        perror("Erro ao abrir arquivo");
-        return;
+        return -1;
     }
 
-    // Variáveis de controle
-    uint8_t sequencia = 0;
-    kermit_package_t msg;
-    size_t bytes_lidos;
-
-    // Loop para enviar o arquivo em pedaços de 63 bytes
-    while ((bytes_lidos = fread(msg.data, 1, MAX_DATA_SIZE, arquivo)) > 0) {
-        msg.mark = 0x7E;  // Marcador de início fixo
-        msg.size = bytes_lidos;   // Tamanho dos dados
-        msg.seq = sequencia++; // Incrementa a sequência
-        msg.type = 0x10;             // Tipo 'dados'
-
-        send_package(sockfd, servidor, &msg);
-    }
-
-    fclose(arquivo);
-    printf("Backup completo!\n");
-}
-
-
-int main() {
-    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
-    if (sockfd < 0) {
-        perror("Erro ao criar socket");
-        return 1;
-    }
-
-    struct sockaddr_ll server;
-    memset(&server, 0, sizeof(server));
-
-    server.sll_family = AF_PACKET;
-    server.sll_protocol = htons(ETH_P_ALL);
-    server.sll_ifindex = if_nametoindex("lo");
-
-    char *command = "backup";
-    char *filename = "Makefile";
-
-    if (strcmp(command, "backup") == 0)
-        backup(sockfd, &server, filename);
-
-    close(sockfd);
+    printf("Pacote enviado com sucesso (%ld bytes)\n", bytes_enviados);
 
     return 0;
 }
