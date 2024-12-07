@@ -9,10 +9,12 @@
 typedef struct kermit_package
 {
 	uint8_t inicio;
-	uint16_t info; // tamanho, sequencia, tipo
+	uint16_t info;			/* tamanho, sequencia, tipo */
 	uint8_t dados[64];
 	uint8_t crc;
 } kermit_t;
+
+#define NET_INTERFACE "lo"
 
 #define INICIO 0b01111110
 #define OFFSET_5 0b00011111
@@ -31,3 +33,9 @@ typedef struct kermit_package
 #define ERRO 0b11111
 
 int create_raw_socket(char *interface);
+
+uint8_t get_tipo(kermit_t *pacote);
+
+void imprime_pacote(kermit_t *pacote);
+
+void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia);

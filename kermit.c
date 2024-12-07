@@ -32,3 +32,26 @@ int create_raw_socket(char* interface) {
  
     return soquete;
 }
+
+uint8_t get_tipo(kermit_t *pacote) {
+    return (pacote->info >> 11) & OFFSET_5;
+}
+
+void imprime_pacote(kermit_t *pacote)
+{
+    uint8_t tamanho = pacote->info & OFFSET_6;          // Bits 0-5
+    uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
+    uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
+
+    printf("%08b %06b %05b %05b %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
+}
+
+void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia)
+{
+    memset(pacote, 0, sizeof(kermit_t));
+
+    pacote->inicio = INICIO;
+    pacote->info = (tamanho & OFFSET_6) | ((sequencia & OFFSET_5) << 6) | ((tipo & OFFSET_5) << 11);
+    memcpy(pacote->dados, dados, tamanho);
+    pacote->crc = 0x0;
+}

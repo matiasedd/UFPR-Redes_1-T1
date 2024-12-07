@@ -1,126 +1,55 @@
 #include "kermit.h"
 
-void montar_pacote(kermit_t *pacote, const char *mensagem, uint8_t sequencia, uint8_t tipo)
+int server_backup(kermit_t *pacote)
 {
-    memset(pacote, 0, sizeof(kermit_t));
-
-    pacote->inicio = INICIO;
-    uint8_t tamanho = strlen(mensagem);
-    if (tamanho > 64)
-        tamanho = 64;
-
-    pacote->info = (tamanho & OFFSET_6) | ((sequencia & OFFSET_5) << 6) | ((tipo & OFFSET_5) << 11);
-
-    memcpy(pacote->dados, mensagem, tamanho);
-
-    pacote->crc = 0x0;
-}
-
-void imprime_pacote(kermit_t *pacote)
-{
-    // Desmonta o campo info
-    uint8_t tamanho = pacote->info & OFFSET_6;          // Bits 0-5
-    uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
-    uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
-
-    // Exibe informações do pacote
-    printf("\tInicio: 0b%08b\n", pacote->inicio);
-    printf("\tInfo: Tamanho=%d, Sequência=%d, Tipo=0b%05b\n", tamanho, sequencia, tipo);
-    printf("\tDados: %.*s\n", tamanho, pacote->dados);
-    printf("\tCRC: 0b%08b\n", pacote->crc);
-}
-
-int server_backup(kermit_t *recebido, int sockfd, struct sockaddr_ll destino)
-{
-    printf("Solicitação de backup recebida. Processando...\n");
-
-    FILE *arquivo = fopen((char *)recebido->dados, "w");
+    char *filename = (char *)pacote->dados;
+    FILE *arquivo = fopen(filename, "w");
 
     if (arquivo == NULL)
-    {
-        perror("Erro ao salvar arquivo");
         return -1;
-    }
 
-    char nome_arq[64];
-    kermit_t enviado;
-    montar_pacote(&enviado, nome_arq, 1, OK);
-
-    // Envio do pacote
-    ssize_t bytes_enviados = sendto(sockfd, &enviado, sizeof(kermit_t), 0,
-                                    (struct sockaddr *)&destino, sizeof(destino));
-    if (bytes_enviados == -1)
-    {
-        perror("Erro ao enviar pacote");
-        return -1;
-    }
-
-    printf("Pacote enviado com sucesso (%ld bytes)\n", bytes_enviados);
+    fclose(arquivo);
 
     return 0;
 }
 
 int main()
 {
-    const char *interface = "lo";
-    int sockfd = create_raw_socket((char *)interface);
+    int sockfd = create_raw_socket(NET_INTERFACE);
 
-    struct sockaddr_ll destino = {0};
-    destino.sll_family = AF_PACKET;
-    destino.sll_ifindex = if_nametoindex(interface);
-    destino.sll_protocol = htons(ETH_P_ALL);
+    struct sockaddr_ll addr = {0};
+    addr.sll_family = AF_PACKET;
+    addr.sll_ifindex = if_nametoindex(NET_INTERFACE);
+    addr.sll_protocol = htons(ETH_P_ALL);
 
-    puts("Servidor inicializado: aguardando o envio de pacotes");
+    char buffer[1024];
+    kermit_t sender;
 
     while (1)
     {
-        char buffer[2048];
-        struct sockaddr_ll remetente;
-        socklen_t remetente_len = sizeof(remetente);
+        recvfrom(sockfd, buffer, 1024, 0, (struct sockaddr *)&addr, (socklen_t *)sizeof(addr));
+        kermit_t *receiver = (kermit_t *)buffer;
 
-        // Recebe o pacote
-        ssize_t bytes_recebidos = recvfrom(sockfd, buffer, sizeof(buffer), 0,
-                                           (struct sockaddr *)&remetente, &remetente_len);
-        if (bytes_recebidos == -1)
+        switch (get_tipo(receiver))
         {
-            perror("Erro ao receber pacote");
-            continue;
-        }
+        case BACKUP:
+            montar_pacote(ACK, &sender, NULL, 0, 0);
+            sendto(sockfd, &sender, sizeof(kermit_t), 0, (struct sockaddr *)&addr, sizeof(addr));
 
-        // Valida se o pacote é do tipo kermit_t
-        if (bytes_recebidos < sizeof(kermit_t))
-        {
-            printf("Pacote ignorado (tamanho insuficiente: %ld bytes)\n", bytes_recebidos);
-            continue;
-        }
+            int response = server_backup(receiver);
 
-        // Processa o pacote
-        kermit_t *pacote = (kermit_t *)buffer;
-        if (pacote->inicio == INICIO)
-        { // Verifica campo de início
-            imprime_pacote(pacote);
-
-            uint8_t tipo = (pacote->info >> 11) & OFFSET_5; // Bits 11-15
-
-            // Ações baseadas no tipo
-            switch (tipo)
+            if (response == 0)
             {
-            case BACKUP: // backup
-                server_backup(pacote, sockfd, destino);
-                break;
-            case DADOS: // Dados
-                printf("Recebendo dados para backup...\n");
-                break;
-            case FINALIZA: // Fim da transmissão
-                printf("Transmissão de dados finalizada.\n");
-                break;
-            default:
-                printf("Tipo de pacote não reconhecido: 0b%05b\n", tipo);
+                montar_pacote(ACK, &sender, NULL, 0, 0);
+                sendto(sockfd, &sender, sizeof(kermit_t), 0, (struct sockaddr *)&addr, sizeof(addr));
             }
-        }
-        else
-        {
-            printf("Pacote ignorado (campo de início inválido: 0b%08b)\n", pacote->inicio);
+            else
+            {
+                montar_pacote(NACK, &sender, NULL, 0, 0);
+                sendto(sockfd, &sender, sizeof(kermit_t), 0, (struct sockaddr *)&addr, sizeof(addr));
+            }
+
+            break;
         }
     }
 
