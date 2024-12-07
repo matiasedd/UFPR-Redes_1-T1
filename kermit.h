@@ -15,7 +15,7 @@
 typedef struct kermit_package
 {
 	uint8_t inicio;     /* marcador de inicio */
-	uint16_t info;			/* tamanho, sequencia, tipo */
+	uint16_t info;      /* tamanho, sequencia, tipo */
 	uint8_t dados[63];  /* dados */
 	uint8_t crc;        /* crc de 8 bits calculado sobre os campos inicio, info e dados */
 } kermit_t;
@@ -48,5 +48,5 @@ uint8_t get_sequencia(kermit_t *pacote); /* Retorna o numero de sequencia do pac
 
 void imprime_pacote(kermit_t *pacote);   /* Imrpime: inicio tamanho sequencia tipo crc */
 
-void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia); /* atribui os dados ao pacote*/
+void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanho, uint16_t sequencia); /* atribui os dados ao pacote*/
 

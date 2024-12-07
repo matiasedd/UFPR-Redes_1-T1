@@ -81,9 +81,7 @@ int main()
         fgets(buffer, 1024, stdin);
 
         command = strtok(buffer, " ");
-        filename = strtok(NULL, " ");
-
-        filename[strcspn(filename, "\n")] = '\0';
+        filename = strtok(NULL, "\n");
 
         if (strcmp(command, "backup") == 0)
         {
