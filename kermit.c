@@ -43,10 +43,11 @@ void imprime_pacote(kermit_t *pacote)
     uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
     uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
 
-    printf("%08b %06b %05b %05b %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
+    // printf("%hhu\n", pacote->info);
+    printf("[INIT] %08b [TAM] %06b [SEQ] %05b [TYPE] %05b [CRC] %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
 }
 
-void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia)
+void montar_pacote(uint8_t tipo, kermit_t *pacote, void *dados, uint8_t tamanho, uint8_t sequencia)
 {
     memset(pacote, 0, sizeof(kermit_t));
 

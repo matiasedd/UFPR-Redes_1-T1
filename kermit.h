@@ -5,12 +5,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 typedef struct kermit_package
 {
 	uint8_t inicio;
-	uint16_t info;			/* tamanho, sequencia, tipo */
-	uint8_t dados[64];
+	uint16_t info; /* tamanho, sequencia, tipo */
+	uint8_t dados[63];
 	uint8_t crc;
 } kermit_t;
 
@@ -28,6 +29,7 @@ typedef struct kermit_package
 #define RESTAURA 0b00101
 #define VERIFICA 0b00110
 
+#define TAMANHO 0b01111
 #define DADOS 0b10000
 #define FINALIZA 0b10001
 #define ERRO 0b11111
@@ -38,4 +40,4 @@ uint8_t get_tipo(kermit_t *pacote);
 
 void imprime_pacote(kermit_t *pacote);
 
-void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia);
+void montar_pacote(uint8_t tipo, kermit_t *pacote, void *dados, uint8_t tamanho, uint8_t sequencia);

@@ -1,8 +1,12 @@
 #include "kermit.h"
 
-void processa_pacote(kermit_t *pacote) {
+void processa_pacote(kermit_t *pacote)
+{
     switch (get_tipo(pacote))
     {
+    case OK:
+        puts("Received OK from server");
+        break;
     case ACK:
         puts("Received ACK from server");
         break;
@@ -17,6 +21,15 @@ int client_backup(char *filename, int sockfd, struct sockaddr_ll addr)
     kermit_t sender;
     char buffer[1024];
 
+    FILE *arquivo = fopen(filename, "r");
+
+    if (arquivo == NULL)
+    {
+        perror("Erro ao abrir arquivo");
+        return -1;
+    }
+
+    puts("Sending BACKUP to server");
     montar_pacote(BACKUP, &sender, filename, strlen(filename), 0);
     sendto(sockfd, &sender, sizeof(kermit_t), 0, (struct sockaddr *)&addr, sizeof(addr));
 
@@ -27,6 +40,23 @@ int client_backup(char *filename, int sockfd, struct sockaddr_ll addr)
 
     if (get_tipo(receiver) == NACK)
         return -1;
+
+    // tamanho
+    puts("Sending TAMANHO to server");
+    /* v1
+    fseek(arquivo, 0, SEEK_END);
+    uint8_t size = ftell(arquivo);
+
+    montar_pacote(TAMANHO, &sender, size, sizeof(uint8_t), 0);
+    send(sockfd, &sender, sizeof(kermit_t), 0);
+    */
+    struct stat info;
+    stat(filename, &info);
+
+    // montar_pacote(TAMANHO, &sender, (uint8_t *)info.st_size, sizeof(uint8_t), 0);
+    // imprime_pacote(&sender);
+
+    // dados
 
     return 0;
 }
@@ -41,7 +71,7 @@ int main()
     addr.sll_protocol = htons(ETH_P_ALL);
 
     char buffer[1024];
-    
+
     while (1)
     {
         char *command, *filename;
