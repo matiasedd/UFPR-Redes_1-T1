@@ -2,27 +2,50 @@
 
 int server_backup_wrapper(kermit_t *pacote, int sockfd, char *buffer)
 {
-    //char *filename = (char *)pacote->dados;
-    //FILE *arquivo = fopen(
-    //if (arquivo == NULL)
-    //    return -1;
-    
+    kermit_t *receiver;
+
+    char *filename = (char *)pacote->dados;
+    FILE *arquivo = fopen(filename, "w");
+
+    if (arquivo == NULL)
+        return -1;
+
+    // backup
     recv(sockfd, buffer, 1024, 0);
-    kermit_t *receiver = (kermit_t *) buffer;
+    receiver = (kermit_t *)buffer;
 
     imprime_pacote(receiver);
 
-    //fclose(arquivo)
-    
+    // tamanho
+    recv(sockfd, buffer, 1024, 0);
+    receiver = (kermit_t *)buffer;
+
+    imprime_pacote(receiver);
+
+    // dados
+    recv(sockfd, buffer, 63, 0);
+    receiver = (kermit_t *)buffer;
+
+    do
+    {
+        recv(sockfd, buffer, 1024, 0);
+        receiver = (kermit_t *)buffer;
+
+        fprintf(arquivo, "%s", receiver->dados);
+        imprime_pacote(receiver);
+
+    } while (get_tipo(receiver) != FINALIZA);
+
+    fclose(arquivo);
+
     return 0;
 }
 
 void server_backup(kermit_t *receiver, int sockfd)
-{	
+{
     char buffer[1024];
     kermit_t sender;
 
-    puts("Sending OK to client");
     montar_pacote(OK, &sender, NULL, 0, 0);
     send(sockfd, &sender, sizeof(kermit_t), 0);
 
@@ -30,13 +53,13 @@ void server_backup(kermit_t *receiver, int sockfd)
 
     if (response == 0)
     {
-        puts("Sending OK to client");
+        puts("Finished backup. Sending OK to client");
         montar_pacote(OK, &sender, NULL, 0, 0);
         send(sockfd, &sender, sizeof(kermit_t), 0);
     }
     else
     {
-        puts("Sending NACK to client");
+        puts("An error ocourred during backup! Sending NACK to client");
         montar_pacote(NACK, &sender, NULL, 0, 0);
         send(sockfd, &sender, sizeof(kermit_t), 0);
     }
@@ -46,12 +69,10 @@ void server_backup(kermit_t *receiver, int sockfd)
 
 void server_verifica()
 {
-
 }
 
 void server_restaura()
 {
-
 }
 
 int main()
@@ -79,7 +100,7 @@ int main()
         default:
             puts("invalid");
             break;
-      }
+        }
     }
 
     return 0;

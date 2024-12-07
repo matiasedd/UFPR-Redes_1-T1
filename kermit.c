@@ -80,7 +80,7 @@ void imprime_pacote(kermit_t *pacote)
     printf("[INIT] %08b [TAM] %06b [SEQ] %05b [TYPE] %05b [CRC] %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
 }
 
-void montar_pacote(uint8_t tipo, kermit_t *pacote, char *dados, uint8_t tamanho, uint8_t sequencia)
+void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanho, uint16_t sequencia)
 {
     memset(pacote, 0, sizeof(kermit_t));
 

@@ -1,6 +1,5 @@
 #include "kermit.h"
 
-
 void processa_pacote(kermit_t *pacote)
 {
     switch (get_tipo(pacote))
@@ -30,7 +29,7 @@ int client_backup(char *filename, int sockfd)
         return -1;
     }
 
-    puts("Sending BACKUP to server");
+    // backup
     montar_pacote(BACKUP, &sender, filename, strlen(filename), 0);
     send(sockfd, &sender, sizeof(kermit_t), 0);
 
@@ -43,21 +42,31 @@ int client_backup(char *filename, int sockfd)
         return -1;
 
     // tamanho
-    puts("Sending TAMANHO to server");
-    /* v1
     fseek(arquivo, 0, SEEK_END);
-    uint8_t size = ftell(arquivo);
+    long int tam = ftell(arquivo);
+    fseek(arquivo, 0, SEEK_SET);
 
-    montar_pacote(TAMANHO, &sender, size, sizeof(uint8_t), 0);
+    char buf[42];
+    sprintf(buf, "%ld", tam);
+
+    montar_pacote(TAMANHO, &sender, buf, sizeof(buf), 0);
     send(sockfd, &sender, sizeof(kermit_t), 0);
-    */
-    //struct stat info;
-    //stat(filename, &info);
-
-    // montar_pacote(TAMANHO, &sender, (uint8_t *)info.st_size, sizeof(uint8_t), 0);
-    // imprime_pacote(&sender);
 
     // dados
+    size_t size;
+    uint8_t seq = 0;
+    
+    while ((size = fread(buffer, sizeof(uint8_t), 63, arquivo)))
+    {
+        montar_pacote(DADOS, &sender, buffer, size, seq++);
+        imprime_pacote(&sender);
+        send(sockfd, &sender, (size + 4) * sizeof(uint8_t), 0);
+    }
+
+    montar_pacote(FINALIZA, &sender, NULL, 0, 0);
+    send(sockfd, &sender, sizeof(kermit_t), 0);
+
+    fclose(arquivo);
 
     return 0;
 }
@@ -71,10 +80,10 @@ int main()
 
     /* --- Handle Input --- */
 
-    #if DEBUG
-        puts("Iniciando IO com o usuario");
-    #endif
-    
+#if DEBUG
+    puts("Iniciando IO com o usuario");
+#endif
+
     while (1)
     {
         printf("$ ");
