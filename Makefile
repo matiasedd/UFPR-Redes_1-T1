@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -lm -DDEBUG
+CFLAGS = -std=gnu99 -Wall -lm -DDEBUG
 
 all: client server
 

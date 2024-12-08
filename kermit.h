@@ -1,19 +1,23 @@
-#include <stdlib.h> /* exit */
-#include <stdio.h>  /* perror, printf */
-#include <string.h> /* memset */
+/* Redes I UFPR - 2024.2 */
+/* Trabalho 1 - Protocolo Kermit */
+/* Alunos - Edison Matias, Matheus Feitosa */
 
-#include <unistd.h> /* close */
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/ethernet.h>
-#include <linux/if_packet.h>
-#include <linux/if.h>
-#include <arpa/inet.h> /* htons */
-#include <net/if.h>
+#ifndef __KERMIT__
+#define __KERMIT__
 
-#include <math.h>     /* floor, log10 */
-#include <sys/time.h> /* struct timeval */
+#include <stdlib.h>             /* exit */
+#include <stdio.h>              /* perror, printf, puts, sprintf, popen */
+#include <string.h>             /* memset */
+
+#include <unistd.h>             /* close */
+#include <sys/ioctl.h>          /* ioctl, SIOCGIFINDEX */
+#include <net/ethernet.h>       /* ETH_P_ALL */
+#include <linux/if_packet.h>    /* struct sockaddr_ll, struct packet_mr, PACKET_MR_PROMISC, PACKET_ADD_MEMBERSHIP */
+#include <linux/if.h>           /* struct ifreq */
+#include <arpa/inet.h>          /* htons */
+
+#include <math.h>               /* floor, log10 */
+#include <sys/time.h>           /* struct timeval */
 
 typedef struct kermit_package
 {
@@ -59,3 +63,5 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 void enviar_pacote(kermit_t *pacote, int sockfd);
 
 void receber_pacote(kermit_t *pacote, int sockfd);
+
+#endif
