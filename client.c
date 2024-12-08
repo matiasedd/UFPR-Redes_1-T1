@@ -53,6 +53,41 @@ int client_backup(char *filename, int sockfd)
     return 0;
 }
 
+
+
+int client_restaura(char *filename, int sockfd) 
+{
+    return 0;
+}
+
+int client_verifica(char *filename, int sockfd) 
+{
+    return 0;
+}
+
+int client_shell(char *command) 
+{
+    char buff[1024];
+
+    sprintf(buff, "/usr/bin/%s ", command);
+
+
+    FILE *shell = popen(buff, "r");
+    
+    if (shell == NULL)
+    {
+        perror("Comando Invalido");
+        return -1;
+    }
+
+    while(fgets(buff, 1024, shell))
+        printf("    %s", buff);
+
+    pclose(shell);
+
+    return 0;
+}
+
 int main()
 {
     int sockfd = create_raw_socket(NET_INTERFACE);
@@ -77,6 +112,18 @@ int main()
         if (strcmp(command, "backup") == 0)
         {
             client_backup(filename, sockfd);
+        }
+        else if (strcmp(command, "verifica") == 0) 
+        {
+            client_verifica(filename, sockfd);
+        }
+        else if (strcmp(command, "restaura") == 0)
+        {
+            client_restaura(filename, sockfd);
+        }
+        else
+        {
+            client_shell(command);
         }
     }
 
