@@ -80,7 +80,7 @@ void imprime_pacote(kermit_t *pacote)
     uint8_t sequencia = get_sequencia(pacote); // Bits 6-10
     uint8_t tipo = get_tipo(pacote);           // Bits 11-15
 
-    printf("[INIT] %08b [TAM] %06b [SEQ] %05b [TYPE] %05b [CRC] %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
+    printf("[INIT] %08b [INFO] %hhu [CRC] %08b\n", pacote->inicio, pacote->info, pacote->crc);
 }
 
 uint8_t calcular_crc(uint8_t *bytes, uint16_t size) 
@@ -110,14 +110,15 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 {
     memset(pacote, 0, sizeof(kermit_t));
 
+    printf("debug: %hhu %hhu %hhu\n", tamanho, sequencia, tipo);
     pacote->inicio = INICIO;
-    pacote->info = ((tamanho << 10) | (sequencia << 5) | (tipo));
-    memcpy(pacote->dados, dados, tamanho);
-    pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
+    pacote->info = ((tamanho << 10) | (tipo));
+    // memcpy(pacote->dados, dados, tamanho);
+    // pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
 
     //#if DEBUG
     //  printf("(Tipo:%hhu Tamanho:%hhu Sequencia:%hhu\n", tipo, tamanho, sequencia);
-        printf("Pacote: "); imprime_pacote(pacote);
+        // printf("Pacote: "); imprime_pacote(pacote);
     //#endif
 }
 

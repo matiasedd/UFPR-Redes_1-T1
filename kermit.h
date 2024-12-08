@@ -12,6 +12,8 @@
 #include <arpa/inet.h> /* htons */
 #include <net/if.h>
 
+#include <math.h>
+
 typedef struct kermit_package
 {
 	uint8_t inicio;     /* marcador de inicio */

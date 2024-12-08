@@ -31,6 +31,8 @@ int client_backup(char *filename, int sockfd)
 
     // backup
     montar_pacote(BACKUP, &sender, filename, strlen(filename), 0);
+    printf("pacote BACKUP: ");
+    imprime_pacote(&sender);
     send(sockfd, &sender, sizeof(kermit_t), 0);
 
     recv(sockfd, buffer, 1024, 0);
@@ -49,13 +51,20 @@ int client_backup(char *filename, int sockfd)
     char buf[42];
     sprintf(buf, "%ld", tam);
 
-    montar_pacote(TAMANHO, &sender, buf, sizeof(buf), 0);
+    if (tam)
+    {
+        tam = floor(log10((double)tam) + 1);
+    }
+
+    montar_pacote(TAMANHO, &sender, buf, (uint16_t)tam, 0);
+    printf("pacote TAMANHO: ");
+    imprime_pacote(&sender);
     send(sockfd, &sender, sizeof(kermit_t), 0);
 
     // dados
     size_t size;
     uint8_t seq = 0;
-    
+
     while ((size = fread(buffer, sizeof(uint8_t), 63, arquivo)))
     {
         montar_pacote(DADOS, &sender, buffer, size, seq++);
