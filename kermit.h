@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stdlib.h> /* exit */
 #include <stdio.h>  /* perror, printf */
 #include <string.h> /* memset */
 
@@ -12,7 +12,8 @@
 #include <arpa/inet.h> /* htons */
 #include <net/if.h>
 
-#include <math.h> /* log10 */
+#include <math.h>     /* floor, log10 */
+#include <sys/time.h> /* struct timeval */
 
 typedef struct kermit_package
 {
@@ -40,6 +41,8 @@ typedef struct kermit_package
 #define DADOS    0b10000
 #define FINALIZA 0b10001
 #define ERRO     0b11111
+
+#define TIMEOUT 5 /* tempo em segundo ate o timeout */
 
 int create_raw_socket(char *interface);  /* Retorna um descritor de arquivo com o socket */
 

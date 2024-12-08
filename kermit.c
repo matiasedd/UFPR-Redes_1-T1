@@ -15,7 +15,7 @@ int create_raw_socket(char *interface)
     if (sockfd < 0)
     {
         perror("Erro ao criar socket: Verifique se você é root!\n");
-        return -1;
+        exit(-1);
     }
 
     struct ifreq ir; /* Configuracoes da interface de redes */
@@ -26,7 +26,7 @@ int create_raw_socket(char *interface)
     if (ioctl(sockfd, SIOCGIFINDEX, &ir) < 0)
     {
         perror("Erro syscall ioctl");
-        return -2;
+        exit(-2);
     }
 
     struct sockaddr_ll server_addr; /* device-independent physical layer address */
@@ -39,7 +39,7 @@ int create_raw_socket(char *interface)
     if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         perror("Erro no bind");
-        return -3;
+        exit(-3);
     }
 
     struct packet_mreq mr;
@@ -51,7 +51,16 @@ int create_raw_socket(char *interface)
     if (setsockopt(sockfd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) < 0)
     {
         perror("Erro ao fazer setsockopt: Verifique se a interface de rede foi especificada corretamente.");
-        return -4;
+        exit(-4);
+    }
+
+    struct timeval timeout;
+    timeout.tv_sec = TIMEOUT;
+    timeout.tv_usec = 0;
+
+    if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0) {
+        perror("Erro ao adicionar timeout");
+        exit(-5);
     }
 
 #if DEBUG
@@ -89,16 +98,6 @@ uint16_t get_tipo(kermit_t *pacote)
     return aux;
 }
 
-/*
-void imprime_pacote(kermit_t *pacote)
-{
-    // uint16_t tamanho = get_tamanho(pacote);     // Bits 0-5
-    // uint16_t sequencia = get_sequencia(pacote); // Bits 6-10
-    // uint16_t tipo = get_tipo(pacote);           // Bits 11-15
-
-    printf("%hhu %hhu 0x%02x\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote));
-}
-*/
 void imprime_pacote(kermit_t *pacote)
 {
     printf("[INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] %hhu [CRC] %hhu\n", 
@@ -130,19 +129,25 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 {
     memset(pacote, 0, sizeof(kermit_t));
 
+#if DEBUG
     printf("debug0: %hhu %hhu %hhu %hhu\n", tamanho, sequencia, tipo, pacote->crc);
+#endif
 
     pacote->inicio = INICIO;
     pacote->info = pacote->info | ((tamanho << 10) );
     pacote->info = pacote->info | ((sequencia << 5) );
     pacote->info = pacote->info | (tipo);
 
+#if DEBUG
     printf("debug1: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc);
+#endif
 
     memcpy(pacote->dados, dados, tamanho);
     pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
 
+#if DEBUG
     printf("debug2: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc);
+#endif
 }
 
 void enviar_pacote(kermit_t *pacote, int sockfd)
@@ -152,13 +157,48 @@ void enviar_pacote(kermit_t *pacote, int sockfd)
     imprime_pacote(pacote);
 }
 
+long long timestamp() {
+    struct timeval timer;
+    gettimeofday(&timer, NULL);
+
+    return timer.tv_sec;
+}
+
 void receber_pacote(kermit_t *pacote, int sockfd)
 {
     memset(pacote, 0, sizeof(kermit_t));
 
-    size_t bytes = recv(sockfd, pacote, 1024, 0);
+#if DEBUG
+    puts("start");
+#endif
+
+    size_t bytes;
+    int valid = 0;
+
+    long long start = timestamp();
+    long long deadline = start + TIMEOUT;
+    
+    do
+    {
+        bytes = recv(sockfd, pacote, 1024, 0);
+
+        if (pacote->inicio == INICIO)  /* foi recebido um pacote valido antes do timeout */
+        {
+            valid = 1;
+            break;
+        }
+
+#if DEBUG
+        printf("%lld %lld %lld\n", timestamp(), start, deadline);
+#endif
+
+    } while (timestamp() < deadline);
+
+#if DEBUG
+    valid ? puts("pkg valido") : puts("timeout"); 
 
     printf("recv (%ld): ", bytes);
     imprime_pacote(pacote);
     printf("dados: %s\n", pacote->dados);
+#endif
 }
