@@ -53,3 +53,6 @@ void imprime_pacote(kermit_t *pacote);   /* Imrpime: inicio tamanho sequencia ti
 
 void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanho, uint16_t sequencia); /* atribui os dados ao pacote*/
 
+void enviar_pacote(kermit_t *pacote, int sockfd);
+
+void receber_pacote(kermit_t *pacote, int sockfd);

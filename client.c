@@ -18,64 +18,18 @@ void processa_pacote(kermit_t *pacote)
 
 int client_backup(char *filename, int sockfd)
 {
-    kermit_t sender;
-    char buffer[1024];
-
     FILE *arquivo = fopen(filename, "r");
 
-    if (arquivo == NULL)
-    {
+    if (arquivo == NULL) {
         perror("Erro ao abrir arquivo");
         return -1;
     }
 
-    // backup
-    montar_pacote(BACKUP, &sender, filename, strlen(filename), 0);
-    printf("pacote BACKUP: ");
-    imprime_pacote(&sender);
-    send(sockfd, &sender, sizeof(kermit_t), 0);
+    kermit_t pacote;
+    uint16_t seq = 0;
 
-    recv(sockfd, buffer, 1024, 0);
-    kermit_t *receiver = (kermit_t *)buffer;
-
-    processa_pacote(receiver);
-
-    if (get_tipo(receiver) == NACK)
-        return -1;
-
-    // tamanho
-    fseek(arquivo, 0, SEEK_END);
-    long int tam = ftell(arquivo);
-    fseek(arquivo, 0, SEEK_SET);
-
-    char buf[42];
-    sprintf(buf, "%ld", tam);
-
-    if (tam)
-    {
-        tam = floor(log10((double)tam) + 1);
-    }
-
-    montar_pacote(TAMANHO, &sender, buf, (uint16_t)tam, 0);
-    printf("pacote TAMANHO: ");
-    imprime_pacote(&sender);
-    send(sockfd, &sender, sizeof(kermit_t), 0);
-
-    // dados
-    size_t size;
-    uint8_t seq = 0;
-
-    while ((size = fread(buffer, sizeof(uint8_t), 63, arquivo)))
-    {
-        montar_pacote(DADOS, &sender, buffer, size, seq++);
-        imprime_pacote(&sender);
-        send(sockfd, &sender, (size + 4) * sizeof(uint8_t), 0);
-    }
-
-    montar_pacote(FINALIZA, &sender, NULL, 0, 0);
-    send(sockfd, &sender, sizeof(kermit_t), 0);
-
-    fclose(arquivo);
+    montar_pacote(BACKUP, &pacote, filename, strlen(filename), seq++);
+    enviar_pacote(&pacote, sockfd);
 
     return 0;
 }
