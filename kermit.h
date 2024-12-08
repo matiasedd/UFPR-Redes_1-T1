@@ -12,7 +12,7 @@
 #include <arpa/inet.h> /* htons */
 #include <net/if.h>
 
-#include <math.h>
+#include <math.h> /* log10 */
 
 typedef struct kermit_package
 {
@@ -43,11 +43,11 @@ typedef struct kermit_package
 
 int create_raw_socket(char *interface);  /* Retorna um descritor de arquivo com o socket */
 
-uint8_t get_tamanho(kermit_t *pacote);   /* Retorna o tamanho do pacote */
+uint16_t get_tamanho(kermit_t *pacote);   /* Retorna o tamanho do pacote */
 
-uint8_t get_tipo(kermit_t *pacote);      /* Retorna o tipo do pacote */
+uint16_t get_tipo(kermit_t *pacote);      /* Retorna o tipo do pacote */
 
-uint8_t get_sequencia(kermit_t *pacote); /* Retorna o numero de sequencia do pacote */
+uint16_t get_sequencia(kermit_t *pacote); /* Retorna o numero de sequencia do pacote */
 
 void imprime_pacote(kermit_t *pacote);   /* Imrpime: inicio tamanho sequencia tipo crc */
 

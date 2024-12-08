@@ -58,29 +58,40 @@ int create_raw_socket(char* interface) {
 
 /* --- Kermit_package --- */
 
-uint8_t get_tamanho(kermit_t *pacote) 
+uint16_t get_tamanho(kermit_t *pacote) 
 {
-    return (pacote->info >> 10);
+    uint16_t aux = pacote->info;
+    aux = aux >> 10;
+
+    return aux;
 }
 
-uint8_t get_sequencia(kermit_t *pacote) 
+uint16_t get_sequencia(kermit_t *pacote) 
 {
-    return  (pacote->info << 6) >> 11;
+    uint16_t volatile aux = pacote->info;
+    aux = aux << 6;
+    aux = aux >> 11;
+
+    return  aux;
 }
 
-uint8_t get_tipo(kermit_t *pacote) 
+uint16_t get_tipo(kermit_t *pacote) 
 {
-    return (pacote->info << 11) >> 11;
+    uint16_t volatile aux = pacote->info;
+    aux = aux << 11;
+    aux = aux >> 11;
+
+    return aux;
 }
 
 
 void imprime_pacote(kermit_t *pacote)
 {
-    uint8_t tamanho = get_tamanho(pacote);     // Bits 0-5
-    uint8_t sequencia = get_sequencia(pacote); // Bits 6-10
-    uint8_t tipo = get_tipo(pacote);           // Bits 11-15
+    uint16_t tamanho = get_tamanho(pacote);     // Bits 0-5
+    uint16_t sequencia = get_sequencia(pacote); // Bits 6-10
+    uint16_t tipo = get_tipo(pacote);           // Bits 11-15
 
-    printf("[INIT] %08b [INFO] %hhu [CRC] %08b\n", pacote->inicio, pacote->info, pacote->crc);
+    //printf("[INIT] %08b [INFO] %hhu [CRC] %08b\n", pacote->inicio, pacote->info, pacote->crc);
 }
 
 uint8_t calcular_crc(uint8_t *bytes, uint16_t size) 
@@ -110,9 +121,14 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 {
     memset(pacote, 0, sizeof(kermit_t));
 
-    printf("debug: %hhu %hhu %hhu\n", tamanho, sequencia, tipo);
+    printf("debug0: %hhu %hhu %hhu\n", tamanho, sequencia, tipo);
     pacote->inicio = INICIO;
-    pacote->info = ((tamanho << 10) | (tipo));
+    pacote->info = pacote->info | ((tamanho << 10) );
+    pacote->info = pacote->info | ((sequencia << 5) );
+    pacote->info = pacote->info | (tipo);
+
+    printf("debug1: %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote));
+    puts("------");
     // memcpy(pacote->dados, dados, tamanho);
     // pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
 
