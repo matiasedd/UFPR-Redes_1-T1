@@ -1,35 +1,54 @@
 #include "kermit.h"
 
-void processa_pacote(kermit_t *pacote)
-{
-    switch (get_tipo(pacote))
-    {
-    case OK:
-        puts("Received OK from server");
-        break;
-    case ACK:
-        puts("Received ACK from server");
-        break;
-    case NACK:
-        puts("Received NACK from server");
-        break;
-    }
-}
+uint16_t seq = -1;
 
 int client_backup(char *filename, int sockfd)
 {
     FILE *arquivo = fopen(filename, "r");
 
-    if (arquivo == NULL) {
+    if (arquivo == NULL)
+    {
         perror("Erro ao abrir arquivo");
         return -1;
     }
 
     kermit_t pacote;
-    uint16_t seq = 0;
 
-    montar_pacote(BACKUP, &pacote, filename, strlen(filename), seq++);
+    // backup
+    montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
     enviar_pacote(&pacote, sockfd);
+
+    // receber_pacote(&pacote, sockfd);
+
+    // tamanho
+    fseek(arquivo, 0, SEEK_END);
+    long int tam = ftell(arquivo);
+    fseek(arquivo, 0, SEEK_SET);
+
+    char buffer[255];
+    sprintf(buffer, "%ld", tam);
+
+    if (tam)
+        tam = floor(log10((double)tam) + 1);
+
+    montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
+    enviar_pacote(&pacote, sockfd);
+
+    // dados
+    size_t bytes;
+
+    while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
+    {
+        montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
+        enviar_pacote(&pacote, sockfd);
+    }
+
+    // finaliza
+
+    montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
+    enviar_pacote(&pacote, sockfd);
+
+    fclose(arquivo);
 
     return 0;
 }

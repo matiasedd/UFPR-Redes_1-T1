@@ -100,8 +100,8 @@ uint16_t get_tipo(kermit_t *pacote)
 
 void imprime_pacote(kermit_t *pacote)
 {
-    printf("[INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] %hhu [CRC] %hhu\n", 
-            pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc);
+    printf("[INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] 0x%x [CRC] %hhu dados: %s\n", 
+            pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc, pacote->dados);
 }
 
 uint8_t calcular_crc(uint8_t *bytes, uint16_t size)
@@ -152,7 +152,7 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 
 void enviar_pacote(kermit_t *pacote, int sockfd)
 {
-    size_t bytes = send(sockfd, pacote, 1024, 0);
+    size_t bytes = send(sockfd, pacote, sizeof(kermit_t), 0);
     printf("send (%ld): ", bytes);
     imprime_pacote(pacote);
 }
@@ -199,6 +199,5 @@ void receber_pacote(kermit_t *pacote, int sockfd)
 
     printf("recv (%ld): ", bytes);
     imprime_pacote(pacote);
-    printf("dados: %s\n", pacote->dados);
 #endif
 }
