@@ -58,34 +58,66 @@ int create_raw_socket(char* interface) {
 
 /* --- Kermit_package --- */
 
-uint8_t get_tamanho(kermit_t *pacote) {
-    return pacote->info & OFFSET_6;
+uint8_t get_tamanho(kermit_t *pacote) 
+{
+    return (pacote->info >> 10);
 }
 
-uint8_t get_sequencia(kermit_t *pacote) {
-    return  (pacote->info >> 6) & OFFSET_5;
+uint8_t get_sequencia(kermit_t *pacote) 
+{
+    return  (pacote->info << 6) >> 11;
 }
 
-uint8_t get_tipo(kermit_t *pacote) {
-    return (pacote->info >> 11) & OFFSET_5;
+uint8_t get_tipo(kermit_t *pacote) 
+{
+    return (pacote->info << 11) >> 11;
 }
 
 
 void imprime_pacote(kermit_t *pacote)
 {
-    uint8_t tamanho = pacote->info & OFFSET_6;          // Bits 0-5
-    uint8_t sequencia = (pacote->info >> 6) & OFFSET_5; // Bits 6-10
-    uint8_t tipo = (pacote->info >> 11) & OFFSET_5;     // Bits 11-15
+    uint8_t tamanho = get_tamanho(pacote);     // Bits 0-5
+    uint8_t sequencia = get_sequencia(pacote); // Bits 6-10
+    uint8_t tipo = get_tipo(pacote);           // Bits 11-15
 
     printf("[INIT] %08b [TAM] %06b [SEQ] %05b [TYPE] %05b [CRC] %08b\n", pacote->inicio, tamanho, sequencia, tipo, pacote->crc);
 }
+
+uint8_t calcular_crc(uint8_t *bytes, uint16_t size) 
+{
+    #define POLY 0x97                       /*10010111 - CRC8-AUTOSAR */
+    uint8_t crc = 0x00;
+
+    while (--size)
+    {
+        crc ^= *bytes++;                    /* Apply Byte */
+
+        for (uint8_t i = 0; i < 8; ++i)     /* Para cada Bit */
+        {
+            crc <<= 1;
+
+            if (crc & 0x80)                 /* 10000000 */
+                crc ^=  POLY;
+        }
+
+    }
+
+    return crc;
+}
+
 
 void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanho, uint16_t sequencia)
 {
     memset(pacote, 0, sizeof(kermit_t));
 
     pacote->inicio = INICIO;
-    pacote->info = (tamanho & OFFSET_6) | ((sequencia & OFFSET_5) << 6) | ((tipo & OFFSET_5) << 11);
+    pacote->info = ((tamanho << 10) | (sequencia << 5) | (tipo));
     memcpy(pacote->dados, dados, tamanho);
-    pacote->crc = 0x0;
+    pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
+
+    //#if DEBUG
+    //  printf("(Tipo:%hhu Tamanho:%hhu Sequencia:%hhu\n", tipo, tamanho, sequencia);
+        printf("Pacote: "); imprime_pacote(pacote);
+    //#endif
 }
+

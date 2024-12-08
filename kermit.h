@@ -15,7 +15,7 @@
 typedef struct kermit_package
 {
 	uint8_t inicio;     /* marcador de inicio */
-	uint16_t info;			/* tamanho, sequencia, tipo */
+	uint16_t info;      /* tamanho, sequencia, tipo */
 	uint8_t dados[63];  /* dados */
 	uint8_t crc;        /* crc de 8 bits calculado sobre os campos inicio, info e dados */
 } kermit_t;
