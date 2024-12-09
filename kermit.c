@@ -200,7 +200,7 @@ int receber_pacote(kermit_t *pacote, int sockfd)
     } while (timestamp() < deadline);
 
 #if DEBUG
-    //puts("[receber_pacote]: Timeout"); 
+    puts("Timeout: Reenviando pacote"); 
 
 #endif
 

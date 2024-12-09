@@ -4,6 +4,8 @@ uint16_t seq = -1;
 
 int client_backup(char *filename, int sockfd)
 {
+    kermit_t pacote;
+    int timeout;
     FILE *arquivo = fopen(filename, "r");
 
     if (arquivo == NULL)
@@ -12,13 +14,13 @@ int client_backup(char *filename, int sockfd)
         return -1;
     }
 
-    kermit_t pacote;
-
     // backup
-    montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
-    enviar_pacote(&pacote, sockfd);
-
-    receber_pacote(&pacote, sockfd);
+    timeout = -1;
+    do {
+        montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
 
     // tamanho
     fseek(arquivo, 0, SEEK_END);
@@ -31,26 +33,34 @@ int client_backup(char *filename, int sockfd)
     if (tam)
         tam = floor(log10((double)tam) + 1);
 
-    montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
-    enviar_pacote(&pacote, sockfd);
+    timeout = -1;
+    do {
+        montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
 
-    receber_pacote(&pacote, sockfd);
 
     // dados
     size_t bytes;
 
     while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
     {
-        montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
-        enviar_pacote(&pacote, sockfd);
-        receber_pacote(&pacote, sockfd);
+        timeout = -1;
+        do {
+            montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
+            enviar_pacote(&pacote, sockfd);
+            timeout = receber_pacote(&pacote, sockfd);
+        } while (timeout == -1);
     }
 
     // finaliza
-    montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
-    enviar_pacote(&pacote, sockfd);
-
-    receber_pacote(&pacote, sockfd);
+    timeout = -1;
+    do {
+        montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
 
     fclose(arquivo);
 
