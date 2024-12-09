@@ -6,6 +6,9 @@ void server_backup(kermit_t *receiver, int sockfd)
 {
     kermit_t pacote;
 
+    char *filename = (char*) receiver->dados;
+    FILE *arquivo = fopen(filename, "w");
+
     montar_pacote(OK, &pacote, NULL, 0, ++seq);
     enviar_pacote(&pacote, sockfd);
 
@@ -15,9 +18,20 @@ void server_backup(kermit_t *receiver, int sockfd)
     montar_pacote(OK, &pacote, NULL, 0, ++seq);
     enviar_pacote(&pacote, sockfd);
 
-    while (get_tipo(&pacote) != FINALIZA)
+    // dados
+    uint16_t tipo;
+
+    while (1)
     {
         receber_pacote(&pacote, sockfd);
+        tipo = get_tipo(&pacote);
+
+        if (tipo == FINALIZA)
+            break;
+
+        if (tipo == DADOS)
+            fprintf(arquivo, "%s", pacote.dados);
+
         montar_pacote(ACK, &pacote, NULL, 0, ++seq);
         enviar_pacote(&pacote, sockfd);
     }
@@ -30,6 +44,8 @@ void server_backup(kermit_t *receiver, int sockfd)
         enviar_pacote(&pacote, sockfd);
     } while (get_tipo(&pacote) != FINALIZA);
     */
+
+    fclose(arquivo);
 
     puts("backup finalizado");
 }
