@@ -7,14 +7,14 @@ int create_raw_socket(char *interface)
     /* --- Handle Socket --- */
 
 #if DEBUG
-    puts("Iniciando Socket");
+    puts("[create_raw_socket]: Iniciando Socket");
 #endif
 
     int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 
     if (sockfd < 0)
     {
-        perror("Erro ao criar socket: Verifique se você é root!\n");
+        perror("[create_raw_socket]: Erro ao criar socket: Verifique se você é root!\n");
         exit(-1);
     }
 
@@ -25,7 +25,7 @@ int create_raw_socket(char *interface)
 
     if (ioctl(sockfd, SIOCGIFINDEX, &ir) < 0)
     {
-        perror("Erro syscall ioctl");
+        perror("[create_raw_socket]: Erro syscall ioctl");
         exit(-2);
     }
 
@@ -38,7 +38,7 @@ int create_raw_socket(char *interface)
 
     if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        perror("Erro no bind");
+        perror("[create_raw_socket]: Erro no bind");
         exit(-3);
     }
 
@@ -50,7 +50,7 @@ int create_raw_socket(char *interface)
 
     if (setsockopt(sockfd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) < 0)
     {
-        perror("Erro ao fazer setsockopt: Verifique se a interface de rede foi especificada corretamente.");
+        perror("[create_raw_socket]: Erro ao fazer setsockopt: Verifique se a interface de rede foi especificada corretamente.");
         exit(-4);
     }
 
@@ -59,12 +59,12 @@ int create_raw_socket(char *interface)
     timeout.tv_usec = 0;
 
     if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout)) < 0) {
-        perror("Erro ao adicionar timeout");
+        perror("[create_raw_socket]: Erro ao adicionar timeout");
         exit(-5);
     }
 
 #if DEBUG
-    puts("Socket Iniciado com Sucesso");
+    puts("[create_raw_socket]: Socket Iniciado com Sucesso");
 #endif
 
     return sockfd;
@@ -98,10 +98,15 @@ uint16_t get_tipo(kermit_t *pacote)
     return aux;
 }
 
+uint8_t get_crc(kermit_t *pacote)
+{
+    return pacote->crc;
+}
+
 void imprime_pacote(kermit_t *pacote)
 {
-    printf("[INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] 0x%x [CRC] %hhu dados: %s\n", 
-            pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc, pacote->dados);
+    printf("[imprime_pacote]: [INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] 0x%x [CRC] %hhu dados: %s\n", 
+            pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote), pacote->dados);
 }
 
 uint8_t calcular_crc(uint8_t *bytes, uint16_t size)
@@ -130,7 +135,7 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
     memset(pacote, 0, sizeof(kermit_t));
 
 #if DEBUG
-    printf("debug0: %hhu %hhu %hhu %hhu\n", tamanho, sequencia, tipo, pacote->crc);
+    printf("[montar_pacote]: debug0: %hhu %hhu %hhu %hhu\n", tamanho, sequencia, tipo, get_crc(pacote));
 #endif
 
     pacote->inicio = INICIO;
@@ -139,22 +144,25 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
     pacote->info = pacote->info | (tipo);
 
 #if DEBUG
-    printf("debug1: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc);
+    printf("[montar_pacote]: debug1: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote));
 #endif
 
     memcpy(pacote->dados, dados, tamanho);
     pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
 
 #if DEBUG
-    printf("debug2: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), pacote->crc);
+    printf("[montar_pacote]: debug2: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote));
 #endif
 }
 
 void enviar_pacote(kermit_t *pacote, int sockfd)
 {
     size_t bytes = send(sockfd, pacote, sizeof(kermit_t), 0);
-    printf("send (%ld): ", bytes);
+
+#if DEBUG
+    printf("[enviar_pacote]: send (%ld): ", bytes);
     imprime_pacote(pacote);
+#endif
 }
 
 long long timestamp() {
@@ -164,40 +172,53 @@ long long timestamp() {
     return timer.tv_sec;
 }
 
-void receber_pacote(kermit_t *pacote, int sockfd)
+/* receber_pacote
+ *
+ *  0 - Recebeu um pacote valido do procotolo
+ * -1 - Timeou 
+ */
+
+int receber_pacote(kermit_t *pacote, int sockfd)
 {
     memset(pacote, 0, sizeof(kermit_t));
 
 #if DEBUG
-    puts("start");
+    puts("[receber_pacote]: Iniciando Espera");
 #endif
 
     size_t bytes;
-    int valid = 0;
 
     long long start = timestamp();
     long long deadline = start + TIMEOUT;
     
     do
     {
-        bytes = recv(sockfd, pacote, 1024, 0);
+        bytes = recv(sockfd, pacote, sizeof (kermit_t), 0);
 
         if (pacote->inicio == INICIO)  /* foi recebido um pacote valido antes do timeout */
         {
-            valid = 1;
-            break;
-        }
-
+            bytes = recv(sockfd, pacote, sizeof (kermit_t), 0); /* remover loopback */
 #if DEBUG
-        printf("%lld %lld %lld\n", timestamp(), start, deadline);
+            puts("[receber_pacote]: Recebi um pacote valido");
+#endif
+            return 0; /* pacote valido */
+        }
+#if DEBUG
+        else
+        {
+            //if( bytes != -1)
+            //  puts("[receber_pacote]: Recebi lixo");
+        }
 #endif
 
     } while (timestamp() < deadline);
 
 #if DEBUG
-    valid ? puts("pkg valido") : puts("timeout"); 
+    //puts("[receber_pacote]: Timeout"); 
 
-    printf("recv (%ld): ", bytes);
-    imprime_pacote(pacote);
+    //printf("[receber_pacote]: recv (%ld): ", bytes);
+    //imprime_pacote(pacote);
 #endif
+
+    return -1; /* timeout */
 }

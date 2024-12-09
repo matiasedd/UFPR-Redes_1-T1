@@ -20,6 +20,7 @@ int client_backup(char *filename, int sockfd)
 
     // receber_pacote(&pacote, sockfd);
 
+
     // tamanho
     fseek(arquivo, 0, SEEK_END);
     long int tam = ftell(arquivo);
@@ -53,6 +54,7 @@ int client_backup(char *filename, int sockfd)
     return 0;
 }
 
+/* --- Restaura --- */
 
 
 int client_restaura(char *filename, int sockfd) 
@@ -60,10 +62,62 @@ int client_restaura(char *filename, int sockfd)
     return 0;
 }
 
+/* --- Verifica --- */
+
+int validar_pacote(kermit_t *pacote) 
+{
+    return 1;
+}
+
 int client_verifica(char *filename, int sockfd) 
 {
+    kermit_t pacote;
+    uint16_t sequencia;
+    uint16_t tipo;
+
+    restaura_timeout:
+
+    sequencia = 0;
+
+    montar_pacote(VERIFICA, &pacote, filename, strlen(filename), sequencia++);
+    imprime_pacote(&pacote);
+    enviar_pacote(&pacote, sockfd);
+
+    switch(receber_pacote(&pacote, sockfd)) {
+        case -1:                            /* Timeout */
+            puts("[client_verifica]: Timeout - Sending again");
+            sequencia = 0;
+            goto restaura_timeout;          /*  Solicita denovo */
+
+        case 0:                            /* Recebeu um pacote */
+            puts("chegou alguma coisa");
+            //if(!validar_pacote(&pacote))
+            //    goto restaura_timeout;
+
+            imprime_pacote(&pacote);
+
+            tipo = get_tipo(&pacote);
+
+            switch (tipo) {
+                case ERRO:
+                    puts("[client_verfica]: Arquivo nao encontrado");
+                case NACK:
+                    puts("[client_verfica]: Nack");
+                    goto restaura_timeout;
+                case OK_CHECKSUM:
+                    printf("[client_verifica]: CheckSum: %s\n", pacote.dados);
+                    break;
+                default:
+                    printf("Nao consigo identificar\n");
+                    break;
+            }
+    }
+
     return 0;
 }
+
+
+/* --- Outros --- */
 
 int client_shell(char *command) 
 {
@@ -76,7 +130,7 @@ int client_shell(char *command)
     
     if (shell == NULL)
     {
-        perror("Comando Invalido");
+        perror("[client_shell]: Comando Invalido");
         return -1;
     }
 
@@ -88,6 +142,8 @@ int client_shell(char *command)
     return 0;
 }
 
+/* --- Main --- */
+
 int main()
 {
     int sockfd = create_raw_socket(NET_INTERFACE);
@@ -98,7 +154,7 @@ int main()
     /* --- Handle Input --- */
 
 #if DEBUG
-    puts("Iniciando IO com o usuario");
+    puts("[main]: Iniciando IO com o usuario");
 #endif
 
     while (1)
