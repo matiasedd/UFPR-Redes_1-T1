@@ -43,7 +43,6 @@ int client_backup(char *filename, int sockfd)
     {
         montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
         enviar_pacote(&pacote, sockfd);
-
         receber_pacote(&pacote, sockfd);
     }
 

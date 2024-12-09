@@ -18,6 +18,8 @@ void server_backup(kermit_t *receiver, int sockfd)
     while (get_tipo(&pacote) != FINALIZA)
     {
         receber_pacote(&pacote, sockfd);
+        montar_pacote(ACK, &pacote, NULL, 0, ++seq);
+        enviar_pacote(&pacote, sockfd);
     }
 
     /*

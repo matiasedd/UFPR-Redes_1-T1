@@ -27,7 +27,7 @@ typedef struct kermit_package
 	uint8_t crc;        /* crc de 8 bits calculado sobre os campos inicio, info e dados */
 } kermit_t;
 
-#define NET_INTERFACE "lo"
+#define NET_INTERFACE "enp0s31f6"
 
 #define INICIO   0b01111110
 #define OFFSET_5 0b00011111

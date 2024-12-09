@@ -181,7 +181,7 @@ int receber_pacote(kermit_t *pacote, int sockfd)
 
         if (pacote->inicio == INICIO)  /* foi recebido um pacote valido antes do timeout */
         {
-            bytes = recv(sockfd, pacote, sizeof (kermit_t), 0); /* remover loopback */
+            // bytes = recv(sockfd, pacote, sizeof (kermit_t), 0); /* remover loopback */
 #if DEBUG
             // puts("[receber_pacote]: Recebi um pacote valido");
             printf("[receber_pacote]: recv (%ld): ", bytes);
