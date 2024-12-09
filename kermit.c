@@ -134,25 +134,13 @@ void montar_pacote(uint16_t tipo, kermit_t *pacote, char *dados, uint16_t tamanh
 {
     memset(pacote, 0, sizeof(kermit_t));
 
-#if DEBUG
-    printf("[montar_pacote]: debug0: %hhu %hhu %hhu %hhu\n", tamanho, sequencia, tipo, get_crc(pacote));
-#endif
-
     pacote->inicio = INICIO;
     pacote->info = pacote->info | ((tamanho << 10) );
     pacote->info = pacote->info | ((sequencia << 5) );
     pacote->info = pacote->info | (tipo);
 
-#if DEBUG
-    printf("[montar_pacote]: debug1: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote));
-#endif
-
     memcpy(pacote->dados, dados, tamanho);
     pacote->crc = calcular_crc((uint8_t *) pacote, tamanho + 3);
-
-#if DEBUG
-    printf("[montar_pacote]: debug2: %hhu %hhu %hhu %hhu\n", get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote));
-#endif
 }
 
 void enviar_pacote(kermit_t *pacote, int sockfd)
@@ -182,10 +170,6 @@ int receber_pacote(kermit_t *pacote, int sockfd)
 {
     memset(pacote, 0, sizeof(kermit_t));
 
-#if DEBUG
-    puts("[receber_pacote]: Iniciando Espera");
-#endif
-
     size_t bytes;
 
     long long start = timestamp();
@@ -199,7 +183,9 @@ int receber_pacote(kermit_t *pacote, int sockfd)
         {
             bytes = recv(sockfd, pacote, sizeof (kermit_t), 0); /* remover loopback */
 #if DEBUG
-            puts("[receber_pacote]: Recebi um pacote valido");
+            // puts("[receber_pacote]: Recebi um pacote valido");
+            printf("[receber_pacote]: recv (%ld): ", bytes);
+            imprime_pacote(pacote);
 #endif
             return 0; /* pacote valido */
         }
@@ -216,8 +202,6 @@ int receber_pacote(kermit_t *pacote, int sockfd)
 #if DEBUG
     //puts("[receber_pacote]: Timeout"); 
 
-    //printf("[receber_pacote]: recv (%ld): ", bytes);
-    //imprime_pacote(pacote);
 #endif
 
     return -1; /* timeout */

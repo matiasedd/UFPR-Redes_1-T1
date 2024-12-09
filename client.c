@@ -18,8 +18,7 @@ int client_backup(char *filename, int sockfd)
     montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
     enviar_pacote(&pacote, sockfd);
 
-    // receber_pacote(&pacote, sockfd);
-
+    receber_pacote(&pacote, sockfd);
 
     // tamanho
     fseek(arquivo, 0, SEEK_END);
@@ -35,6 +34,8 @@ int client_backup(char *filename, int sockfd)
     montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
     enviar_pacote(&pacote, sockfd);
 
+    receber_pacote(&pacote, sockfd);
+
     // dados
     size_t bytes;
 
@@ -42,14 +43,19 @@ int client_backup(char *filename, int sockfd)
     {
         montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
         enviar_pacote(&pacote, sockfd);
+
+        receber_pacote(&pacote, sockfd);
     }
 
     // finaliza
-
     montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
     enviar_pacote(&pacote, sockfd);
 
+    receber_pacote(&pacote, sockfd);
+
     fclose(arquivo);
+
+    puts("backup finalizado");
 
     return 0;
 }

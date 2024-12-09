@@ -6,19 +6,30 @@ void server_backup(kermit_t *receiver, int sockfd)
 {
     kermit_t pacote;
 
-    // montar_pacote(OK, &pacote, NULL, 0, ++seq);
-    // enviar_pacote(&pacote, sockfd);
+    montar_pacote(OK, &pacote, NULL, 0, ++seq);
+    enviar_pacote(&pacote, sockfd);
 
     // tamanho
+    receber_pacote(&pacote, sockfd);
+
+    montar_pacote(OK, &pacote, NULL, 0, ++seq);
+    enviar_pacote(&pacote, sockfd);
 
     while (get_tipo(&pacote) != FINALIZA)
     {
         receber_pacote(&pacote, sockfd);
     }
 
-#if DEBUG
+    /*
+    do {
+        receber_pacote(&pacote, sockfd);
+
+        montar_pacote(ACK, &pacote, NULL, 0, ++seq);
+        enviar_pacote(&pacote, sockfd);
+    } while (get_tipo(&pacote) != FINALIZA);
+    */
+
     puts("backup finalizado");
-#endif
 }
 
 void server_verifica(kermit_t *pacote, int sockfd)
