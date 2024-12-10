@@ -4,18 +4,18 @@ uint16_t seq = -1;
 
 int client_backup(char *filename, int sockfd)
 {
-    kermit_t pacote;
-    int timeout;
     FILE *arquivo = fopen(filename, "r");
 
     if (arquivo == NULL)
     {
-        perror("Erro ao abrir arquivo");
+        perror("[cliente_backup]: Erro ao abrir arquivo");
         return -1;
     }
 
+    kermit_t pacote;
+    int timeout;
+
     // backup
-    timeout = -1;
     do {
         montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
         enviar_pacote(&pacote, sockfd);
@@ -33,7 +33,6 @@ int client_backup(char *filename, int sockfd)
     if (tam)
         tam = floor(log10((double)tam) + 1);
 
-    timeout = -1;
     do {
         montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
         enviar_pacote(&pacote, sockfd);
@@ -45,7 +44,6 @@ int client_backup(char *filename, int sockfd)
 
     while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
     {
-        timeout = -1;
         do {
             montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
             enviar_pacote(&pacote, sockfd);
@@ -54,16 +52,17 @@ int client_backup(char *filename, int sockfd)
     }
 
     // finaliza
-    timeout = -1;
+    puts("mandando finaliza");
+
     do {
         montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
         enviar_pacote(&pacote, sockfd);
-        timeout = receber_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd); /* Recebe o ultimo ack */
     } while (timeout == -1);
 
     fclose(arquivo);
 
-    puts("backup finalizado");
+    puts("[client_backup]: backup finalizado\n");
 
     return 0;
 }
@@ -77,11 +76,6 @@ int client_restaura(char *filename, int sockfd)
 }
 
 /* --- Verifica --- */
-
-int validar_pacote(kermit_t *pacote) 
-{
-    return 1;
-}
 
 int client_verifica(char *filename, int sockfd) 
 {
@@ -100,12 +94,9 @@ int client_verifica(char *filename, int sockfd)
         case -1:                            /* Timeout */
             puts("[client_verifica]: Timeout - Sending again");
             sequencia = 0;
-            goto restaura_timeout;          /*  Solicita denovo */
+            goto restaura_timeout;          /*  Solicita novamente */
 
         case 0:                            /* Recebeu um pacote */
-            //if(!validar_pacote(&pacote))
-            //    goto restaura_timeout;
-
             imprime_pacote(&pacote);
 
             tipo = get_tipo(&pacote);
@@ -119,9 +110,6 @@ int client_verifica(char *filename, int sockfd)
                     goto restaura_timeout;
                 case OK_CHECKSUM:
                     printf("[client_verifica]: CheckSum: %s\n\n", pacote.dados);
-                    break;
-                default:
-                    printf("Nao consigo identificar\n");
                     break;
             }
     }
@@ -165,9 +153,7 @@ int main()
 
     /* --- Handle Input --- */
 
-#if DEBUG
     puts("[main]: Iniciando IO com o usuario");
-#endif
 
     while (1)
     {
@@ -179,6 +165,10 @@ int main()
 
         putchar('\n');
 
+        if (strcmp(command, "exit") == 0) 
+        {
+          return 0;
+        }
         if (strcmp(command, "backup") == 0)
         {
             client_backup(filename, sockfd);
@@ -197,6 +187,6 @@ int main()
         }
     }
 
-    return 0;
+    return 1;
 }
 

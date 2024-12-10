@@ -9,11 +9,15 @@ void server_backup(kermit_t *receiver, int sockfd)
     char *filename = (char*) receiver->dados;
     FILE *arquivo = fopen(filename, "w");
 
+    int timeout;
+
     montar_pacote(OK, &pacote, NULL, 0, ++seq);
     enviar_pacote(&pacote, sockfd);
 
     // tamanho
-    receber_pacote(&pacote, sockfd);
+    do {
+    	timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
 
     montar_pacote(OK, &pacote, NULL, 0, ++seq);
     enviar_pacote(&pacote, sockfd);
@@ -23,18 +27,31 @@ void server_backup(kermit_t *receiver, int sockfd)
 
     while (1)
     {
-        receber_pacote(&pacote, sockfd);
+        do {
+            timeout = receber_pacote(&pacote, sockfd);
+        } while (timeout == -1);
+
         tipo = get_tipo(&pacote);
 
-        if (tipo == FINALIZA)
-            break;
+        printf("%hhu\n", tipo);
 
-        if (tipo == DADOS)
+        if (tipo == FINALIZA)	
+        {
+            puts("Finalizando transmissao");
+            break;
+	      }
+
+        else if (tipo == DADOS)
+        {
             fprintf(arquivo, "%s", pacote.dados);
+        }
 
         montar_pacote(ACK, &pacote, NULL, 0, ++seq);
         enviar_pacote(&pacote, sockfd);
     }
+
+    montar_pacote(ACK, &pacote, NULL, 0, ++seq); /* envaidno o ultimo ack */
+    enviar_pacote(&pacote, sockfd);
 
     fclose(arquivo);
 

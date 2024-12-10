@@ -101,7 +101,7 @@ uint8_t get_crc(kermit_t *pacote)
 
 void imprime_pacote(kermit_t *pacote)
 {
-    printf("[imprime_pacote]: [INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] 0x%x [CRC] %hhu dados: %s\n", 
+    printf("[imprime_pacote]: [INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] %hhu [CRC] %hhu dados: %s\n", 
             pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote), pacote->dados);
 }
 
