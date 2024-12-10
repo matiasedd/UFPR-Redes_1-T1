@@ -15,7 +15,7 @@ int client_backup(char *filename, int sockfd)
     int timeout;
     int seq = 0;
 
-    // backup
+    // backup, receber ack
     do {
         montar_pacote(BACKUP, &pacote, filename, strlen(filename), seq++);
         enviar_pacote(&pacote, sockfd);
@@ -25,6 +25,7 @@ int client_backup(char *filename, int sockfd)
     // tamanho
     fseek(arquivo, 0, SEEK_END);
     long int tam = ftell(arquivo);
+
     fseek(arquivo, 0, SEEK_SET);
 
     char buffer[255];
@@ -80,17 +81,27 @@ int client_restaura(char *filename, int sockfd)
 
     uint16_t tipo;
 
+    /* envia requisicao */
+
     do {
-        montar_pacote(RESTAURA, &pacote, filename, strlen(filename), seq++);
+        montar_pacote(RESTAURA, &pacote, filename, strlen(filename), seq);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd);
     } while (timeout == -1);
 
+    ++seq;
+
+    /* recebe tamanho, envia ack */
+
     do {
-        montar_pacote(ACK, &pacote, NULL, 0, seq++);
+        montar_pacote(ACK, &pacote, NULL, 0, seq);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd);
     } while (timeout == -1);
+
+    ++seq;
+
+    /* recebe dados, envia ack */
 
     while (1)
     {
@@ -99,8 +110,6 @@ int client_restaura(char *filename, int sockfd)
         } while (timeout == -1);
 
         tipo = get_tipo(&pacote);
-
-        printf("%hhu\n", tipo);
 
         if (tipo == FINALIZA)
         {
@@ -116,8 +125,12 @@ int client_restaura(char *filename, int sockfd)
         enviar_pacote(&pacote, sockfd);
     }
 
-    montar_pacote(ACK, &pacote, NULL, 0, seq++);
+    /* envia finaliza */
+
+    montar_pacote(ACK, &pacote, NULL, 0, seq);
     enviar_pacote(&pacote, sockfd);
+
+    ++seq;
 
     fclose(arquivo);
 
@@ -152,7 +165,8 @@ int client_verifica(char *filename, int sockfd)
 
             tipo = get_tipo(&pacote);
 
-            switch (tipo) {
+            switch (tipo) 
+            {
                 case ERRO:
                     puts("[client_verfica]: Arquivo nao encontrado\n");
                     break;

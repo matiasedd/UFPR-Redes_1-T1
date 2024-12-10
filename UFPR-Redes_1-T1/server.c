@@ -94,61 +94,75 @@ void server_verifica(kermit_t *pacote, int sockfd)
     enviar_pacote(pacote, sockfd);
 }
 
-void server_restaura(char *filename, int sockfd)
+void server_restaura(kermit_t *pkg, int sockfd)
 {
-  FILE *arquivo = fopen(filename, "r");
+    char filename[1024];
 
+    snprintf(filename, get_tamanho(pkg), "%s", pkg->dados);
+
+    printf("[server_restaura]: Restaurando %s\n", filename);
+
+    FILE *arquivo = fopen(filename, "r");
+
+    if (arquivo)
+        puts("foi aberto");
+
+  /*
   if (arquivo == NULL)
   {
       perror("[server_restaura]: Erro ao abrir arquivo");
-      return; /* ISSO AQUI TA ERRADO */
+      return; 
   }
+  */
 
-  kermit_t pacote;
-  int timeout;
-  int seq = 0;
+    kermit_t pacote;
+    int timeout;
+    int seq = 0;
 
-  fseek(arquivo, 0, SEEK_END);
-  long int tam = ftell(arquivo);
-  fseek(arquivo, 0, SEEK_SET);
+    fseek(arquivo, 0, SEEK_END);
+    long int tam = ftell(arquivo);
+    fseek(arquivo, 0, SEEK_SET);
 
-  char buffer[255];
-  sprintf(buffer, "%ld", tam);
+    char buffer[255];
+    sprintf(buffer, "%ld", tam);
 
-  if (tam)
-      tam = floor(log10((double)tam) + 1);
+    if (tam)
+        tam = floor(log10((double)tam) + 1);
 
-  do {
-      montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, seq++);
-      enviar_pacote(&pacote, sockfd);
-      timeout = receber_pacote(&pacote, sockfd);
-  } while (timeout == -1);
+    puts("tamanho");
 
-  size_t bytes;
-
-  while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
-  {
-      do {
-        montar_pacote(DADOS, &pacote, buffer, bytes, seq++);
+    do {
+        montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, seq++);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd);
-      } while (timeout == -1);
-  }
+    } while (timeout == -1);
 
-  puts("mandando finaliza");
+    puts("dados");
 
-  do {
-      montar_pacote(FINALIZA, &pacote, NULL, 0, seq++);
-      enviar_pacote(&pacote, sockfd);
-      timeout = receber_pacote(&pacote, sockfd);
-  } while (timeout == -1);
+    size_t bytes;
 
-  fclose(arquivo);
+    while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
+    {
+        do {
+            montar_pacote(DADOS, &pacote, buffer, bytes, seq++);
+            enviar_pacote(&pacote, sockfd);
+            timeout = receber_pacote(&pacote, sockfd);
+        } while (timeout == -1);
+    }
 
-  puts("[server_restaura]: Restaura Finalizado\n");
+    puts("mandando finaliza");
 
-  return;
+    do {
+        montar_pacote(FINALIZA, &pacote, NULL, 0, seq++);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
 
+    fclose(arquivo);
+
+    puts("[server_restaura]: Restaura Finalizado\n");
+
+    return;
 }
 
 int main()
@@ -175,7 +189,7 @@ int main()
             break;
         case RESTAURA:
             puts("\n[main]: Iniciando server_restaura");
-            server_restaura(NULL, sockfd);
+            server_restaura(&pacote, sockfd);
             puts("[main]: Fim server_restaura\n");
             break;
         default:

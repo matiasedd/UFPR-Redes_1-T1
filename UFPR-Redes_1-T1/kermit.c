@@ -101,7 +101,7 @@ uint8_t get_crc(kermit_t *pacote)
 
 void imprime_pacote(kermit_t *pacote)
 {
-    printf("[imprime_pacote]: [INIT] %hhu [TAM] %hhu [SEQ] %hhu [TIP] %hhu [CRC] %hhu dados: %s\n", 
+    printf("[imprime_pacote]: [INIT] %hhu [TAM] %2hhu [SEQ] %2hhu [TIP] %2hhu [CRC] %hhu dados: %s\n", 
             pacote->inicio, get_tamanho(pacote), get_sequencia(pacote), get_tipo(pacote), get_crc(pacote), pacote->dados);
 }
 
@@ -148,18 +148,18 @@ void enviar_pacote(kermit_t *pacote, int sockfd)
     imprime_pacote(pacote);
 }
 
+/* receber_pacote
+ *
+ *  0 - Recebeu um pacote valido do procotolo
+ * -1 - Timeou 
+ */
+
 long long timestamp() {
     struct timeval timer;
     gettimeofday(&timer, NULL);
 
     return timer.tv_sec;
 }
-
-/* receber_pacote
- *
- *  0 - Recebeu um pacote valido do procotolo
- * -1 - Timeou 
- */
 
 int receber_pacote(kermit_t *pacote, int sockfd)
 {
