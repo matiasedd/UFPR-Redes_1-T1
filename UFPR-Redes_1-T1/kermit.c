@@ -144,7 +144,7 @@ void enviar_pacote(kermit_t *pacote, int sockfd)
 {
     size_t bytes = send(sockfd, pacote, sizeof(kermit_t), 0);
 
-    printf("[enviar_pacote]: send (%ld): ", bytes);
+    printf("[enviar_pacote]:  send (%ld): ", bytes);
     imprime_pacote(pacote);
 }
 

@@ -1,6 +1,5 @@
 #include "kermit.h"
 
-uint16_t seq = -1;
 
 int client_backup(char *filename, int sockfd)
 {
@@ -14,10 +13,11 @@ int client_backup(char *filename, int sockfd)
 
     kermit_t pacote;
     int timeout;
+    int seq = 0;
 
     // backup
     do {
-        montar_pacote(BACKUP, &pacote, filename, strlen(filename), ++seq);
+        montar_pacote(BACKUP, &pacote, filename, strlen(filename), seq++);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd);
     } while (timeout == -1);
@@ -34,7 +34,7 @@ int client_backup(char *filename, int sockfd)
         tam = floor(log10((double)tam) + 1);
 
     do {
-        montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, ++seq);
+        montar_pacote(TAMANHO, &pacote, buffer, (uint16_t) tam, seq++);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd);
     } while (timeout == -1);
@@ -45,7 +45,7 @@ int client_backup(char *filename, int sockfd)
     while ((bytes = fread(buffer, sizeof(uint8_t), 63, arquivo)))
     {
         do {
-            montar_pacote(DADOS, &pacote, buffer, bytes, ++seq);
+            montar_pacote(DADOS, &pacote, buffer, bytes, seq++);
             enviar_pacote(&pacote, sockfd);
             timeout = receber_pacote(&pacote, sockfd);
         } while (timeout == -1);
@@ -55,7 +55,7 @@ int client_backup(char *filename, int sockfd)
     puts("mandando finaliza");
 
     do {
-        montar_pacote(FINALIZA, &pacote, NULL, 0, ++seq);
+        montar_pacote(FINALIZA, &pacote, NULL, 0, seq++);
         enviar_pacote(&pacote, sockfd);
         timeout = receber_pacote(&pacote, sockfd); /* Recebe o ultimo ack */
     } while (timeout == -1);
@@ -72,6 +72,57 @@ int client_backup(char *filename, int sockfd)
 
 int client_restaura(char *filename, int sockfd) 
 {
+    FILE *arquivo = fopen(filename, "w");
+
+    kermit_t pacote;
+    int timeout;
+    int seq = 0;
+
+    uint16_t tipo;
+
+    do {
+        montar_pacote(RESTAURA, &pacote, filename, strlen(filename), seq++);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
+
+    do {
+        montar_pacote(ACK, &pacote, NULL, 0, seq++);
+        enviar_pacote(&pacote, sockfd);
+        timeout = receber_pacote(&pacote, sockfd);
+    } while (timeout == -1);
+
+    while (1)
+    {
+        do {
+          timeout = receber_pacote(&pacote, sockfd);
+        } while (timeout == -1);
+
+        tipo = get_tipo(&pacote);
+
+        printf("%hhu\n", tipo);
+
+        if (tipo == FINALIZA)
+        {
+            puts("Finalizando transmissao");
+        }
+
+        else if (tipo == DADOS) 
+        {
+            fprintf(arquivo, "%s", pacote.dados);
+        }
+
+        montar_pacote(ACK, &pacote, NULL, 0, seq++);
+        enviar_pacote(&pacote, sockfd);
+    }
+
+    montar_pacote(ACK, &pacote, NULL, 0, seq++);
+    enviar_pacote(&pacote, sockfd);
+
+    fclose(arquivo);
+
+    puts("[client_restaura]: Restaura Finalizado");
+
     return 0;
 }
 
