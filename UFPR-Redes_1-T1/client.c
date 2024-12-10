@@ -94,7 +94,6 @@ int client_verifica(char *filename, int sockfd)
     sequencia = 0;
 
     montar_pacote(VERIFICA, &pacote, filename, strlen(filename), sequencia++);
-    imprime_pacote(&pacote);
     enviar_pacote(&pacote, sockfd);
 
     switch(receber_pacote(&pacote, sockfd)) {
@@ -104,7 +103,6 @@ int client_verifica(char *filename, int sockfd)
             goto restaura_timeout;          /*  Solicita denovo */
 
         case 0:                            /* Recebeu um pacote */
-            //puts("chegou alguma coisa");
             //if(!validar_pacote(&pacote))
             //    goto restaura_timeout;
 
@@ -114,12 +112,13 @@ int client_verifica(char *filename, int sockfd)
 
             switch (tipo) {
                 case ERRO:
-                    puts("[client_verfica]: Arquivo nao encontrado");
+                    puts("[client_verfica]: Arquivo nao encontrado\n");
+                    break;
                 case NACK:
                     puts("[client_verfica]: Nack. Pedindo Novamente");
                     goto restaura_timeout;
                 case OK_CHECKSUM:
-                    printf("[client_verifica]: CheckSum: %s\n", pacote.dados);
+                    printf("[client_verifica]: CheckSum: %s\n\n", pacote.dados);
                     break;
                 default:
                     printf("Nao consigo identificar\n");
@@ -177,6 +176,8 @@ int main()
 
         command = strtok(buffer, " ");
         filename = strtok(NULL, "\n");
+
+        putchar('\n');
 
         if (strcmp(command, "backup") == 0)
         {

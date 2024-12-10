@@ -52,7 +52,9 @@ void server_verifica(kermit_t *pacote, int sockfd)
     FILE *fp = popen(buff, "r");
 
     char buff_cksum[63];
-    memset(buff, 0, 63);
+    memset(buff_cksum, 0, 63);
+
+    buff_cksum[0] = 'C';
 
     fgets(buff_cksum, 63, fp);
 

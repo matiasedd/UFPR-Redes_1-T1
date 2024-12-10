@@ -61,7 +61,7 @@ int create_raw_socket(char *interface)
         exit(-5);
     }
 
-    puts("[create_raw_socket]: Socket Iniciado com Sucesso");
+    puts("[create_raw_socket]: Socket Iniciado com Sucesso\n");
 
     return sockfd;
 }
